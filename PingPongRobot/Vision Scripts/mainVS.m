@@ -3,7 +3,7 @@ clc;	% Clear command window.
 close all;	% Close all figure windows except those created by imtool.
 
 % Setup cam
-cam = webcam(1);
+cam = webcam(2);
 
 % ----- Adjustable Paramters ------
 % 1 is perfect white, 0 is perfect black
@@ -17,6 +17,9 @@ sliderObjectArray = createParamAdjustFigure();
 
 % ------------- Testing Loop -------------
 while true
+    
+    % Run Calibration Sequence to get HSV values of the ball 
+    calibrateHSVThreshold()
     
     % Get Newest Camera Image
     img = snapshot(cam);
@@ -35,14 +38,31 @@ while true
     
     % Display Camera Image with Centroid Location
     ShowImageWithCentroid(img, centroidPosition);
+    
+    % Update the HSV values to better match the balls
+    
+    
 end
 % ------------- Testing Loop -------------
 
+% Run inital calibration sequence to get HSV values of the ball
+function calibrateHSVThreshold()
+    % Show inital Frame
+    img = snapshot(cam);
+    imshow(img);
+    
+    % Have user select the ball with a drag and draw circle
+    
+    
+    % Get average values from the circle selected
+end
 
 % Used to create firgure for the sliders for thresholding the HSV figure
 function sliderObjectArray = createParamAdjustFigure()
 
     paramFig = uifigure('Name','Image Parameters');
+    
+    btn = uibutton(paramFig, 'Position', [250,130,100,22], 'Text', 'Save & Exit');
 
     uilabel(paramFig,'Text', 'H', 'Position', [40 50 100 60]);
     uilabel(paramFig,'Text', 'S', 'Position', [40 190 100 60]);
@@ -60,7 +80,6 @@ function sliderObjectArray = createParamAdjustFigure()
     sliderObjectArray = [sldUpperH, sldLowerH, sldUpperS, sldLowerS, sldUpperV, sldLowerV];
     
 end
-
 
 % Used to convert the RGB to thresholded HSV from sliders
 function mask = MaskHSVFromRGB(image, sliderObjectArray)
