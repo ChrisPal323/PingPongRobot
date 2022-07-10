@@ -15,14 +15,7 @@ GUI = AdjustVision_Figure();
 pause(3); % Wait to boot up fig
 % ------------- GUI Constructor  -------------
 
-% ------- Read Previous Tracking Values ---------
-fileID = fopen('Tracking_Values.txt','r');
-formatSpec = '%f';
-prevVals = fscanf(fileID, formatSpec);
-
-% Set Slider to that value
-GUI.setSliderValues(prevVals);
-% ------- Read Previous Tracking Values ---------
+% -------0 Read Prev Tracking Values  ---------
 
 
 % ------------- Viewing Loop -------------
@@ -58,13 +51,12 @@ end
 % open file for writing
 fid = fopen('Tracking_Values.txt','wt');
 % write the array
-fprintf(fid,'%f\n', GUI.getSliderValues);
-fprintf(fid,'%f\n', get(GUI.smallArea,'Value'));
-fprintf(fid,'%f\n', get(GUI.minCir,'Value'));
+fprintf(fid,'%d\n', GUI.getSliderValues);
+fprintf(fid,'%d\n', get(GUI.smallArea,'Value'));
+fprintf(fid,'%d\n', get(GUI.minCir,'Value'));
 fclose(fid);
 
 % Get Here to End the Program
-GUI.delete
 error("Exited & Saved Successfully");
 
 % ------------- END Testing Loop -------------
