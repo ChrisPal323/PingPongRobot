@@ -2,30 +2,42 @@
 clc;	% Clear command window.
 close all;	% Close all figure windows except those created by imtool.
 
+% Webcam Number
+WEBCAM_NUM = 2;
+
 % Setup cam
-cam = webcam(2);
+cam = webcam(WEBCAM_NUM);
+runLoop = true;
 
 % ----- Adjustable Paramters ------
 % 1 is perfect white, 0 is perfect black
 colorThresh = 0.7;
-smallestAcceptableArea = 300;
-minCirulairty = 0.4;
+smallestAcceptableArea = 150;
+global minCirulairty;
+minCirulairty = 0.6;
 % ----- Adjustable Paramters ------
 
-% Create Slider Figures to Adjust HSV Values
-sliderObjectArray = createParamAdjustFigure();
+% ------------- GUI Constructor  -------------
+global GUI
+GUI = AdjustVision_Figure();
+pause(3); % Wait to boot up fig
+% ------------- GUI Constructor  -------------
 
-% ------------- Testing Loop -------------
-while true
-    
-    % Run Calibration Sequence to get HSV values of the ball 
-    calibrateHSVThreshold()
+% ------------- Calibration Function -------------
+
+% Run Calibration Sequence to get HSV values of the ball 
+calibrateHSVThreshold(cam)
+
+% ------------- Viewing Loop -------------
+
+while runLoop
     
     % Get Newest Camera Image
     img = snapshot(cam);
+    img = imresize(img,[240 426]);
     
     % Parse via HSV colorspace with slider values
-    coloredObjectsMask = MaskHSVFromRGB(img, sliderObjectArray);
+    coloredObjectsMask = MaskHSVFromRGB(img);
     
     % Parse Mask to Find minimum sized and unquie blobs and its respective data
     [propertyDataSet, uniqueBlobs] = FindBlobData(coloredObjectsMask, smallestAcceptableArea);
@@ -37,52 +49,42 @@ while true
     centroidPosition = LocateCentriod(propertyDataSet, maxCirulairtyElementNum);
     
     % Display Camera Image with Centroid Location
-    ShowImageWithCentroid(img, centroidPosition);
+    ShowImageWithCentroid(img, coloredObjectsMask, centroidPosition);
     
-    % Update the HSV values to better match the balls
-    
-    
+    % If save button pressed, stop running and save
+    if (GUI.buttonVal)
+        runLoop = false;
+    end
 end
-% ------------- Testing Loop -------------
+
+% Save HSV Values to file
+% open your file for writing
+fid = fopen('HSV_Values.txt','wt');
+% write the matrix
+fprintf(fid,'%d %d %d\n', GUI.getSliderValues);
+fclose(fid);
+
+% Get Here to End the Program
+return;
+
+% ------------- END Testing Loop -------------
 
 % Run inital calibration sequence to get HSV values of the ball
-function calibrateHSVThreshold()
+function calibrateHSVThreshold(webcam)
+    
     % Show inital Frame
-    img = snapshot(cam);
-    imshow(img);
-    
+    %img = snapshot(webcam);
+
     % Have user select the ball with a drag and draw circle
-    
-    
-    % Get average values from the circle selected
-end
-
-% Used to create firgure for the sliders for thresholding the HSV figure
-function sliderObjectArray = createParamAdjustFigure()
-
-    paramFig = uifigure('Name','Image Parameters');
-    
-    btn = uibutton(paramFig, 'Position', [250,130,100,22], 'Text', 'Save & Exit');
-
-    uilabel(paramFig,'Text', 'H', 'Position', [40 50 100 60]);
-    uilabel(paramFig,'Text', 'S', 'Position', [40 190 100 60]);
-    uilabel(paramFig,'Text', 'V', 'Position', [40 330 100 60]);
-    
-    sldUpperH = uislider(paramFig, 'Value', 0.3, 'Position', [85 50 435 3], 'Limits', [0 1], 'MajorTicks', [0 0.25, 0.5, 0.75, 1]);
-    sldLowerH = uislider(paramFig, 'Value', 0.05, 'Position', [85 110 435 3], 'Limits', [0 1], 'MajorTicks', [0 0.25, 0.5, 0.75, 1]);
-
-    sldUpperS = uislider(paramFig, 'Value', 1, 'Position', [85 190 435 3], 'Limits', [0 1], 'MajorTicks', [0 0.25, 0.5, 0.75, 1]);
-    sldLowerS = uislider(paramFig, 'Value', 0, 'Position', [85 250 435 3], 'Limits', [0 1], 'MajorTicks', [0 0.25, 0.5, 0.75, 1]);
-
-    sldUpperV = uislider(paramFig, 'Value', 1, 'Position', [85 330 435 3], 'Limits', [0 1], 'MajorTicks', [0 0.25, 0.5, 0.75, 1]);
-    sldLowerV = uislider(paramFig, 'Value', 0.85, 'Position', [85 390 435 3], 'Limits', [0 1], 'MajorTicks', [0 0.25, 0.5, 0.75, 1]);
-    
-    sliderObjectArray = [sldUpperH, sldLowerH, sldUpperS, sldLowerS, sldUpperV, sldLowerV];
     
 end
 
 % Used to convert the RGB to thresholded HSV from sliders
-function mask = MaskHSVFromRGB(image, sliderObjectArray)
+function mask = MaskHSVFromRGB(image)
+
+    % Find GUI values
+    global GUI;
+    vals = GUI.getSliderValues();
 
     % Convert
     hsvImage = rgb2hsv(image);
@@ -93,9 +95,9 @@ function mask = MaskHSVFromRGB(image, sliderObjectArray)
 	vImage = hsvImage(:,:,3);
     
     % Now apply each color band's particular thresholds to the color band
-	hueMask = (hImage >= sliderObjectArray(2).Value) & (hImage <= sliderObjectArray(1).Value);
-	saturationMask = (sImage >= sliderObjectArray(4).Value) & (sImage <= sliderObjectArray(3).Value);
-	valueMask = (vImage >= sliderObjectArray(6).Value) & (vImage <= sliderObjectArray(5).Value);
+	hueMask = (hImage >= vals(1)) & (hImage <= vals(2));
+	saturationMask = (sImage >= vals(3)) & (sImage <= vals(4));
+	valueMask = (vImage >= vals(5)) & (vImage <= vals(6));
     
     % Combine H,S, and V masks
     tempMask = uint8(hueMask & saturationMask & valueMask);
@@ -129,7 +131,13 @@ end
 
 % Used to Find the element with max circulairty value
 function eleNum = FindMaxCirculairtyElement(Sdata, Un)
+
+    % Get minCir Threshold
+    global minCirulairty;
     
+    % Init eleNum
+    eleNum = 0;
+
     % First off, check if Ahhh, no data, send back 0 cause sadly, no data
     if (isempty(Sdata))
         eleNum = 0;
@@ -144,7 +152,13 @@ function eleNum = FindMaxCirculairtyElement(Sdata, Un)
           maxCir = max(maxCir,Circulairty);
 
           if(Circulairty == maxCir)
-              eleNum = Un(i);
+              % Passes minCir Threshold
+              if (maxCir >= minCirulairty) 
+                  eleNum = Un(i);
+              else
+                  % Doesn't pass threshold
+                  eleNum = 0;
+              end
           end
     end
 end
@@ -165,13 +179,19 @@ end
 
 
 % Used to Display image with Centroid Positon
-function ShowImageWithCentroid(img, cenPos)
+function ShowImageWithCentroid(img, thresh, cenPos)
+
+    % GUI values
+    global GUI
+    thresh = 255 * repmat(uint8(thresh), 1, 1, 3);
     
-    % Display the image and mark centroid, only if it exists
-	imshow(img, []);
-    hold on
+    % If there are points, plot them on the image
     if (cenPos ~= 0)
-        plot(cenPos(1,1),cenPos(1,2), 'rx');
+        img = insertMarker(img,[cenPos(1,1) cenPos(1,2)],'x','color','red','size',6);
     end
-    hold off 
+    
+    % Push to GUI
+    GUI.Image.ImageSource = img;
+    GUI.ImageThresh.ImageSource = thresh;
+
 end
