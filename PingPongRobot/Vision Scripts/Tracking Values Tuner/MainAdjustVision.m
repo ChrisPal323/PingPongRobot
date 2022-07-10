@@ -2,21 +2,31 @@
 clc;	% Clear command window.
 close all;	% Close all figure windows except those created by imtool.
 
-% Webcam Number
-WEBCAM_NUM = 2;
+% Get Webcam Number from Paths
+fileID = fopen('../Data/Cam_Paths.txt','r');
+formatSpec = '%f';
+camVals = fscanf(fileID, formatSpec);
+
+%  ------- Grab First or Second Cam -------
+WEBCAM_NUM = 1; % 1 or 2
+%  ------- Grab First or Second Cam -------
+
+% Get the cam value
+webcamPath = camVals(WEBCAM_NUM);
 
 % Setup cam
-cam = webcam(WEBCAM_NUM);
+cam = webcam(webcamPath);
 runLoop = true;
 
 % ------------- GUI Constructor  -------------
 global GUI
 GUI = AdjustVision_Figure();
-pause(3); % Wait to boot up fig
+pause(1); % Wait to boot up fig
 % ------------- GUI Constructor  -------------
 
 % ------- Read Previous Tracking Values ---------
-fileID = fopen('Tracking_Values.txt','r');
+filePath = strcat('../Data/Tracking_Values', string(WEBCAM_NUM), '.txt');
+fileID = fopen(filePath,'r');
 formatSpec = '%f';
 prevVals = fscanf(fileID, formatSpec);
 
@@ -128,7 +138,6 @@ function eleNum = FindMaxCirculairtyElement(Sdata, Un)
 
     % get GUI vals
     global GUI;
-    disp(get(GUI.minCir,'Value'));
     
     % Init eleNum
     eleNum = 0;
